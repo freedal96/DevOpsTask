@@ -2,9 +2,10 @@
 - name: Prepare Ubuntu host for container orchestration and CI/CD
   hosts: all
   become: yes
+  vars_files:
+    - vault.yml #ssh key saved here
   vars:
     new_user: devops
-    ssh_pub_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO5H0G5Rd5S77rcyVdJd7Jy3fPZJqq4US/nZBUGKIgh8 freedalfernandes19@gmail.com"  # replace before running
     jenkins_repo_key_url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
 
   tasks:
