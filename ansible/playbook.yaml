@@ -4,7 +4,7 @@
   become: yes
   vars:
     new_user: devops
-    ssh_pub_key: "ssh-rsa AAAA... your_pub_key_here"  # replace before running
+    ssh_pub_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO5H0G5Rd5S77rcyVdJd7Jy3fPZJqq4US/nZBUGKIgh8 freedalfernandes19@gmail.com"  # replace before running
     jenkins_repo_key_url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
 
   tasks:
@@ -118,7 +118,7 @@
         path: /etc/fstab
         regexp: '(^.*swap.*$)'
         replace: '# \\0'
-      backup: yes
+        backup: yes
 
     - name: Configure UFW - allow ssh, http, https, kubelet ports
       ufw:
