@@ -1,0 +1,162 @@
+---
+- name: Prepare Ubuntu host for container orchestration and CI/CD
+  hosts: all
+  become: yes
+  vars:
+    new_user: devops
+    ssh_pub_key: "ssh-rsa AAAA... your_pub_key_here"  # replace before running
+    jenkins_repo_key_url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install basic packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - ufw
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repo
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+
+    - name: Install docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    - name: Ensure docker service running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add Kubernetes apt key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: Add Kubernetes APT repo
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+
+    - name: Install kubelet kubeadm kubectl
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+        update_cache: yes
+      notify:
+        - hold kube packages
+
+    - name: Install helm (script)
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add Jenkins apt key & repo
+      apt_key:
+        url: "{{ jenkins_repo_key_url }}"
+        state: present
+
+    - name: Add Jenkins apt repository
+      apt_repository:
+        repo: deb https://pkg.jenkins.io/debian-stable binary/
+        state: present
+
+    - name: Install OpenJDK and Jenkins
+      apt:
+        name:
+          - openjdk-11-jdk
+          - jenkins
+        state: present
+        update_cache: yes
+
+    - name: Create non-root user
+      user:
+        name: "{{ new_user }}"
+        shell: /bin/bash
+        groups: sudo,docker
+        state: present
+        create_home: yes
+
+    - name: Set authorized_key for non-root user
+      authorized_key:
+        user: "{{ new_user }}"
+        key: "{{ ssh_pub_key }}"
+
+    - name: Ensure swap is off (runtime)
+      command: swapoff -a
+      ignore_errors: yes
+
+    - name: Remove swap entry from fstab
+      replace:
+        path: /etc/fstab
+        regexp: '(^.*swap.*$)'
+        replace: '# \\0'
+      backup: yes
+
+    - name: Configure UFW - allow ssh, http, https, kubelet ports
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Allow HTTP (80)
+      ufw:
+        rule: allow
+        port: 80
+        proto: tcp
+
+    - name: Allow HTTPS (443)
+      ufw:
+        rule: allow
+        port: 443
+        proto: tcp
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: allow
+
+    - name: Pull & run test nginx container
+      docker_container:
+        name: test-nginx
+        image: nginx:stable
+        state: started
+        ports:
+          - "8080:80"
+
+  handlers:
+    - name: hold kube packages
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+        update_cache: no
+        force: yes

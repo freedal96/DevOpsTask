@@ -1,0 +1,38 @@
+replicaCount: 2
+
+image:
+  repository: YOUR_DOCKERHUB_USERNAME/devops-task
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+ingress:
+  enabled: false
+  host: devops.local
+  annotations: {}
+  tls: []
+
+config:
+  APP_MESSAGE: "Hello from Helm ConfigMap"
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50
+
+secrets:
+  useK8sSecrets: true
+  dockerhub:
+    usernameSecretName: dockerhub-credentials
+    usernameKey: username
+    passwordKey: password
