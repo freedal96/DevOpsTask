@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webapp.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "webapp.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "webapp.name" . }}
+    spec:
+      containers:
+        - name: webapp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          envFrom:
+            - secretRef:
+                name: {{ include "webapp.fullname" . }}-secrets
+      imagePullSecrets:
+        - name: {{ .Values.secrets.dockerRegistry | default "" }}

@@ -1,6 +1,0 @@
-apiVersion: v2
-name: devops-task
-description: A simple Flask app for DevOps task
-type: application
-version: 0.1.0
-appVersion: "1.0"

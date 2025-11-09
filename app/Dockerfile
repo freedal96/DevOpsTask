@@ -1,19 +1,31 @@
-# stage 1: build
+# Stage 1: Build wheels
 FROM python:3.10-slim as build
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip wheel -r requirements.txt --wheel-dir=/wheels
+RUN apt-get update && apt-get install -y curl ca-certificates && update-ca-certificates
+RUN pip install --upgrade pip && \
+    pip wheel --no-cache-dir -r requirements.txt --wheel-dir=/wheels
 
-# stage 2: runtime
+# Stage 2: Runtime
 FROM python:3.10-slim
 WORKDIR /app
+
+# Copy pre-built wheels
 COPY --from=build /wheels /wheels
-RUN pip install --no-index --find-links=/wheels -r /app/requirements.txt
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt
+
+# Copy application code
 COPY . .
+
+# Environment
 ENV PORT=5000
 EXPOSE 5000
 
-# healthcheck
+# Healthcheck
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD curl -f http://localhost:5000/health || exit 1
 
+# Start Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app", "--workers", "2"]
