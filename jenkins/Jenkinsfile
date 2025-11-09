@@ -1,0 +1,93 @@
+pipeline {
+    agent any
+
+    environment {
+        GITHUB_REPO = 'https://github.com/freedal96/DevOpsTask.git'
+        DOCKER_IMAGE = 'freedalelan/webapp'
+        DOCKER_TAG = "${env.BUILD_ID}"
+        HELM_CHART_PATH = 'helm/'
+    }
+
+    stages {
+
+        stage('Checkout from GitHub') {
+            steps {
+                git branch: 'feature-test', url: "${GITHUB_REPO}"
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                   pwd
+                   cd app
+                   docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                """
+            }
+        }
+
+        stage('Test Docker Image /health') {
+            steps {
+                sh """
+                    docker rm -f tempweb || true
+                    docker run -d --name tempweb -p 8000:8000 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    sleep 5
+                    docker stop tempweb
+                    docker rm tempweb
+                """
+            }
+        }
+
+        stage('Push Docker Image to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+                    sh 'echo $DH_PASS | docker login -u $DH_USER --password-stdin'
+                    sh 'docker push $DOCKER_IMAGE:$DOCKER_TAG'
+                    sh 'docker tag $DOCKER_IMAGE:$DOCKER_TAG $DOCKER_IMAGE:latest'
+                    sh 'docker push $DOCKER_IMAGE:latest'
+                }
+            }
+        }
+
+        stage('Install Helm') {
+            steps {
+                sh '''
+                mkdir -p $HOME/.local/bin
+                curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz -o helm.tar.gz
+                tar -zxvf helm.tar.gz
+                mv linux-amd64/helm $HOME/.local/bin/helm
+                chmod +x $HOME/.local/bin/helm
+                export PATH=$HOME/.local/bin:$PATH
+                helm version
+                '''
+            }
+        }
+
+        stage('Deploy to Kubernetes via Helm') {
+            steps {
+                 withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
+                    sh """
+                        export KUBECONFIG=$KUBECONFIG_PATH
+                        export PATH=$HOME/.local/bin:$PATH
+                        cd helm
+                        helm upgrade --install webapp . \
+                            --set image.repository=${DOCKER_IMAGE} \
+                            --set image.tag=${DOCKER_TAG}
+                    """
+                }
+            }
+        }
+    } // end stages
+
+    post {
+        always {
+            sh 'docker system prune -f || true'
+        }
+        success {
+            echo "Deployment completed successfully!"
+        }
+        failure {
+            echo "Deployment failed!"
+        }
+    }
+}

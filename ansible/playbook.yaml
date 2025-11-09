@@ -11,31 +11,19 @@
     ssh_pubkey_path: "/home/andi/.ssh/id_rsa.pub"
     kind_version: v0.26.0
     kind_node_image: kindest/node:v1.34.0
-cd ..
+
   tasks:
-    # -------------------------
-    # Logging Start
-    # -------------------------
+
     - name: Log start of playbook
       ansible.builtin.debug:
         msg: "🚀 Starting Ubuntu DevOps setup..."
 
-    # -------------------------
-    # Update System
-    # -------------------------
     - name: Update apt packages
       ansible.builtin.apt:
         update_cache: yes
         upgrade: dist
 
-    - name: Log after apt update
-      ansible.builtin.debug:
-        msg: "✅ System packages updated."
-
-    # -------------------------
-    # Install required packages including Docker
-    # -------------------------
-    - name: Install required packages
+    - name: Install required packages including Docker
       ansible.builtin.apt:
         name:
           - apt-transport-https
@@ -54,12 +42,12 @@ cd ..
         enabled: yes
         state: started
 
-    - name: Log after installing packages
+    - name: Log Docker installation
       ansible.builtin.debug:
-        msg: "🐳 Base packages and Docker installed and running."
+        msg: "🐳 Docker installed and running."
 
     # -------------------------
-    # Install Kubernetes binaries (kubectl, kubeadm, kubelet)
+    # Kubernetes binaries
     # -------------------------
     - name: Download Kubernetes binaries
       ansible.builtin.get_url:
@@ -71,22 +59,11 @@ cd ..
         - kubelet
         - kubectl
 
-    - name: Log Kubernetes binaries installed
-      ansible.builtin.debug:
-        msg: "✅ Kubernetes binaries installed to {{ kube_bin_path }}."
-
-    # -------------------------
-    # Install kind (Kubernetes in Docker)
-    # -------------------------
     - name: Download kind binary
       ansible.builtin.get_url:
         url: "https://kind.sigs.k8s.io/dl/{{ kind_version }}/kind-linux-amd64"
         dest: "{{ kube_bin_path }}/kind"
         mode: '0755'
-
-    - name: Log kind installation
-      ansible.builtin.debug:
-        msg: "🐳 Kind v{{ kind_version }} installed successfully."
 
     - name: Create Kind cluster
       ansible.builtin.shell: >
@@ -94,12 +71,8 @@ cd ..
       args:
         creates: /root/.kube/config
 
-    - name: Log Kind cluster creation
-      ansible.builtin.debug:
-        msg: "✅ Kind single-node cluster 'devops-cluster' created successfully."
-
     # -------------------------
-    # Install Helm via script (idempotent)
+    # Helm installation
     # -------------------------
     - name: Install Helm using official script
       ansible.builtin.shell: |
@@ -107,29 +80,25 @@ cd ..
       args:
         creates: /usr/local/bin/helm
 
-    - name: Log Helm installation
-      ansible.builtin.debug:
-        msg: "⛵ Helm installed successfully."
-
-    # -------------------------
-    # Jenkins (Docker container)
-    # -------------------------
-    - name: Run Jenkins container
+# -------------------------
+# Jenkins container with Docker socket mounted
+# -------------------------
+    - name: Run Jenkins container with Docker access
       community.docker.docker_container:
         name: jenkins
         image: jenkins/jenkins:lts
         state: started
         restart_policy: always
+        privileged: yes                 # allows Docker access inside container
         published_ports:
           - "8081:8080"
           - "50000:50000"
-
-    - name: Log Jenkins deployment
-      ansible.builtin.debug:
-        msg: "🧩 Jenkins running in Docker on port 8081."
-
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /usr/bin/docker:/usr/bin/docker
+          - jenkins_home:/var/jenkins_home
     # -------------------------
-    # Create non-root user and add SSH key
+    # Non-root user setup
     # -------------------------
     - name: Ensure devops user exists
       ansible.builtin.user:
@@ -143,28 +112,20 @@ cd ..
         user: "{{ devops_user }}"
         key: "{{ lookup('file', ssh_pubkey_path) }}"
 
-    - name: Log user creation
-      ansible.builtin.debug:
-        msg: "👤 Non-root user '{{ devops_user }}' created with SSH access."
-
     # -------------------------
     # Disable swap
     # -------------------------
     - name: Disable swap immediately
       ansible.builtin.command: swapoff -a
 
-    - name: Disable swap permanently in fstab
+    - name: Disable swap permanently
       ansible.builtin.replace:
         path: /etc/fstab
-        regexp: '^(.+\\sswap\\s.+)$'
-        replace: '# \\1'
-
-    - name: Log after disabling swap
-      ansible.builtin.debug:
-        msg: "🧠 Swap disabled for Kubernetes."
+        regexp: '^(.+\sswap\s.+)$'
+        replace: '# \1'
 
     # -------------------------
-    # Configure UFW firewall
+    # UFW firewall
     # -------------------------
     - name: Set default UFW policy to deny incoming
       ansible.builtin.ufw:
@@ -172,36 +133,19 @@ cd ..
         direction: incoming
         policy: deny
 
-    - name: Allow SSH
+    - name: Allow SSH, HTTP, HTTPS, NodePorts
       ansible.builtin.ufw:
         rule: allow
-        port: 22
+        port: "{{ item }}"
         proto: tcp
-
-    - name: Allow HTTP
-      ansible.builtin.ufw:
-        rule: allow
-        port: 80
-        proto: tcp
-
-    - name: Allow HTTPS
-      ansible.builtin.ufw:
-        rule: allow
-        port: 443
-        proto: tcp
-
-    - name: Allow NodePort range (30000-32767)
-      ansible.builtin.ufw:
-        rule: allow
-        port: 30000:32767
-        proto: tcp
-
-    - name: Log UFW configuration
-      ansible.builtin.debug:
-        msg: "🧱 UFW configured with rules for SSH, HTTP, HTTPS, NodePorts."
+      loop:
+        - 22
+        - 80
+        - 443
+        - "30000:32767"
 
     # -------------------------
-    # Deploy test NGINX container
+    # Test NGINX container
     # -------------------------
     - name: Deploy test NGINX container
       community.docker.docker_container:
@@ -212,13 +156,6 @@ cd ..
         published_ports:
           - "8080:80"
 
-    - name: Log after deploying NGINX
-      ansible.builtin.debug:
-        msg: "🌐 Test NGINX container deployed on port 8080."
-
-    # -------------------------
-    # End of Playbook
-    # -------------------------
-    - name: Log end of playbook
+    - name: Log completion
       ansible.builtin.debug:
         msg: "🎯 Ubuntu DevOps setup completed successfully!"
