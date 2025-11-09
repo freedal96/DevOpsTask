@@ -21,11 +21,12 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.t
 COPY . .
 
 # Environment
-ENV PORT=5000
-EXPOSE 5000
+ENV PORT=8000
+EXPOSE 8000
 
 # Healthcheck
-HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD curl -f http://localhost:5000/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 CMD curl -f http://localhost:8000/health || exit 1
 
 # Start Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app", "--workers", "2"]
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app", "--workers", "2"]
