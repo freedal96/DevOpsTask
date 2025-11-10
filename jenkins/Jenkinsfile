@@ -17,13 +17,6 @@ pipeline {
     }
 
     stages {
-
-        stage('Checkout Source Code') {
-            steps {
-                git branch: 'main', url: "${GITHUB_REPO}"
-            }
-        }
-
         stage('Install Trivy') {
             steps {
                 sh '''
