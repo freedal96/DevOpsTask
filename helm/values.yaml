@@ -26,7 +26,5 @@ hpa:
   targetCPUUtilizationPercentage: 50
 
 secrets:
-  db:
-    username: ""   # do NOT put real secrets here; create k8s secret instead
-    password: ""
   dockerRegistry: dockerhub-secret
+  appSecretName: webapp-secrets 

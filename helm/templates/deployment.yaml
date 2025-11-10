@@ -2,19 +2,29 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "webapp.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "webapp.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "webapp.name" . }}
+      app.kubernetes.io/name: {{ include "webapp.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ include "webapp.name" . }}
+        app.kubernetes.io/name: {{ include "webapp.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      {{- if .Values.secrets.dockerRegistry }}
+      imagePullSecrets:
+        - name: {{ .Values.secrets.dockerRegistry }}
+      {{- end }}
       containers:
         - name: webapp
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
           ports:
             - containerPort: 5000
           readinessProbe:
@@ -31,6 +41,4 @@ spec:
             periodSeconds: 10
           envFrom:
             - secretRef:
-                name: {{ include "webapp.fullname" . }}-secrets
-      imagePullSecrets:
-        - name: {{ .Values.secrets.dockerRegistry | default "" }}
+                name: {{ .Values.secrets.appSecretName | default "webapp-secrets" }}
