@@ -30,7 +30,7 @@ pipeline {
                     if ! command -v trivy >/dev/null 2>&1; then
                         echo "🧰 Installing Trivy using official .deb package..."
                         apt-get update -y
-                        apt-get install -y wget
+                        apt-get install -y wget apt-transport-https
                         wget -q https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.55.0_Linux-64bit.deb
                         dpkg -i trivy_0.55.0_Linux-64bit.deb || apt-get -f install -y
                     fi
@@ -38,6 +38,7 @@ pipeline {
                 '''
             }
         }
+
 
 
         stage('Build Docker Image') {
