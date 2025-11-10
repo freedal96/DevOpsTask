@@ -16,7 +16,7 @@
     <li>Ansible for environment setup</li>
     <li>Docker for containerization</li>
     <li>Kubernetes & Helm for deployment</li>
-    <li>Jenkins for CI/CD</li>
+    <li>Jenkinsfile for CI/CD</li>
     <li>Kubernetes Secrets for secure credentials</li>
     <li>Trivy for security scanning</li>
 </ul>
@@ -27,8 +27,7 @@
 ├── ansible/             # Ansible playbooks for Ubuntu setup
 ├── app/                 # Web application code (Node.js/Python/Go)
 ├── helm/                # Helm chart for Kubernetes deployment
-├── Jenkinsfile          # CI/CD pipeline
-├── Dockerfile           # Container definition
+├── jenkins              # CI/CD pipeline
 └── README.md
 </pre>
 
@@ -38,34 +37,6 @@
 <p>Run the playbook on your Ubuntu host to install Docker, Kubernetes tools, Helm, and Jenkins:</p>
 <pre>
 ansible-playbook -i inventory.ini playbook.yaml --ask-become-pass
-</pre>
-
-<h3>2. Docker Build & Run Locally</h3>
-<pre>
-cd app
-docker build -t freedalelan/webapp:latest .
-docker run -p 8000:8000 freedalelan/webapp:latest
-curl http://localhost:8000/health
-</pre>
-
-<h3>3. Kubernetes Deployment with Helm</h3>
-<p>Deploy the application to your cluster using Helm:</p>
-<pre>
-kubectl create secret generic webapp-secrets \
-  --from-literal=DB_USER=myuser \
-  --from-literal=DB_PASS=supersecretpassword
-
-kubectl create secret docker-registry dockerhub-secret \
-  --docker-server=https://index.docker.io/v1/ \
-  --docker-username=mydockerhubuser \
-  --docker-password=MY_DOCKERHUB_TOKEN \
-  --docker-email=you@example.com
-
-cd helm
-helm upgrade --install webapp . \
-  --set image.repository=freedalelan/webapp \
-  --set image.tag=latest \
-  --set secrets.dockerRegistry=dockerhub-secret
 </pre>
 
 <h2>CI/CD Pipeline Explanation</h2>
