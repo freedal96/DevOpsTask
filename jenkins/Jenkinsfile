@@ -28,18 +28,17 @@ pipeline {
             steps {
                 sh '''
                     if ! command -v trivy >/dev/null 2>&1; then
-                        echo "🧰 Installing Trivy..."
+                        echo "🧰 Installing Trivy using official .deb package..."
                         apt-get update -y
-                        apt-get install -y wget apt-transport-https gnupg lsb-release
-                        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-                        echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/trivy.list
-                        apt-get update -y
-                        apt-get install -y trivy
+                        apt-get install -y wget
+                        wget -q https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.55.0_Linux-64bit.deb
+                        dpkg -i trivy_0.55.0_Linux-64bit.deb || apt-get -f install -y
                     fi
                     trivy --version
                 '''
             }
         }
+
 
         stage('Build Docker Image') {
             steps {
