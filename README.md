@@ -46,9 +46,9 @@ ansible-playbook -i inventory.ini playbook.yaml --ask-become-pass
 </head>
 <body>
 
-<h1>DevOpsTask - Part 1: Linux & Ansible Setup</h1>
+<h1>Part 1: Linux & Ansible Setup</h1>
 
-<p>This Ansible playbook prepares a single-node Ubuntu environment for container orchestration and CI/CD. It was tested on WSL Ubuntu with localhost inventory, but it can be adapted to a remote host by updating the inventory..</p>
+<p>This Ansible playbook prepares a single-node Ubuntu environment for container orchestration and CI/CD. It was tested on WSL Ubuntu with localhost inventory, but it can be adapted to a remote host by updating the inventory.</p>
 
 ---
 
@@ -80,14 +80,23 @@ localhost ansible_connection=local
 
 ---
 
-<h2>Playbook Code Snippet</h2>
-
+<h2>Playbook Breakdown</h2>
+<ul>
+<li>hosts: webserver — target the localhost group in the inventory.</li>
+<li>become: yes — ensures all commands run with sudo privileges.</li>
+<li>gather_facts: yes — collects system information for conditional logic or configuration.</li>
+</ul>
 <pre>
 - name: Setup Ubuntu for DevOps (Single Node)
   hosts: webserver
   become: yes
   gather_facts: yes
+</pre>
 
+<ul>
+<li>Stores usernames, paths, and versions to make the playbook reusable and maintainable</li>
+</ul>
+<pre>
   vars:
     devops_user: devops
     kube_version: v1.27.4
@@ -95,18 +104,29 @@ localhost ansible_connection=local
     ssh_pubkey_path: "/home/andi/.ssh/id_rsa.pub"
     kind_version: v0.26.0
     kind_node_image: kindest/node:v1.34.0
-
-  tasks:
-
+</pre>
+<ul>
+</ul>
+<h2>Steps Explained</h2>
+<h4>1. Logging start of playbook</h4>
+Provides visual feedback in Jenkins or CLI logs
+<pre>
     - name: Log start of playbook
       ansible.builtin.debug:
         msg: "Starting Ubuntu DevOps setup..."
+</pre>
 
+<h4>2. Update and upgrade Ubuntu packages</h4>
+Ensures all packages are up-to-date before installing Docker or Kubernetes
+<pre>
     - name: Update apt packages
       ansible.builtin.apt:
         update_cache: yes
         upgrade: dist
-
+</pre>
+<h4>3. Install required packages including Docker </h4>
+Installs Docker, firewall (UFW), and basic system utilities for container orchestration.
+<pre>
     - name: Install required packages including Docker
       ansible.builtin.apt:
         name:
@@ -119,13 +139,19 @@ localhost ansible_connection=local
           - docker.io
         state: present
         update_cache: yes
-
+</pre>
+<h4>4. Enable Docker service </h4>
+Starts Docker and ensures it starts on boot.
+<pre>
     - name: Enable Docker service
       ansible.builtin.systemd:
         name: docker
         enabled: yes
         state: started
-
+</pre>
+<h4> 5. Download Kubernetes binaries and kind for single-node cluster </h4>
+Installs kubeadm, kubelet, kubectl.
+<pre>
     - name: Download Kubernetes binaries
       ansible.builtin.get_url:
         url: "https://dl.k8s.io/release/{{ kube_version }}/bin/linux/amd64/{{ item }}"
@@ -135,25 +161,35 @@ localhost ansible_connection=local
         - kubeadm
         - kubelet
         - kubectl
-
+</pre>
+Downloads kind for creating a single-node Kubernetes cluster:
+<pre>
     - name: Download kind binary
       ansible.builtin.get_url:
         url: "https://kind.sigs.k8s.io/dl/{{ kind_version }}/kind-linux-amd64"
         dest: "{{ kube_bin_path }}/kind"
         mode: '0755'
-
+</pre>
+<pre>
     - name: Create Kind cluster
       ansible.builtin.shell: >
         kind create cluster --name devops-cluster --image {{ kind_node_image }}
       args:
         creates: /root/.kube/config
-
+</pre>
+Initializes a single-node Kubernetes cluster for testing Helm and deployments.
+<h4>6. Install Helm </h4>
+Installs Helm for Kubernetes package management.
+<pre>
     - name: Install Helm using official script
       ansible.builtin.shell: |
         curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       args:
         creates: /usr/local/bin/helm
-
+</pre>
+<h4>7. Run Jenkins container with Docker socket </h4>
+Starts Jenkins inside a Docker container with access to host Docker, enabling CI/CD builds from inside Jenkins.
+<pre>
     - name: Run Jenkins container with Docker access
       community.docker.docker_container:
         name: jenkins
@@ -168,19 +204,27 @@ localhost ansible_connection=local
           - /var/run/docker.sock:/var/run/docker.sock
           - /usr/bin/docker:/usr/bin/docker
           - jenkins_home:/var/jenkins_home
-
+</pre>
+<h4>8. Create non-root user and add SSH key </h4>
+Creates a non-root DevOps user with sudo and Docker privileges.
+<pre>
     - name: Ensure devops user exists
       ansible.builtin.user:
         name: "{{ devops_user }}"
         groups: sudo,docker
         shell: /bin/bash
         create_home: yes
-
+</pre>
+Adds SSH public key for secure login.
+<pre>
     - name: Add SSH public key for devops
       ansible.builtin.authorized_key:
         user: "{{ devops_user }}"
         key: "{{ lookup('file', ssh_pubkey_path) }}"
-
+</pre>
+<h4>9.Disable swap (required for Kubernetes) </h4>
+Ensures Kubernetes works correctly by disabling swap.
+<pre>
     - name: Disable swap immediately
       ansible.builtin.command: swapoff -a
 
@@ -189,7 +233,10 @@ localhost ansible_connection=local
         path: /etc/fstab
         regexp: '^(.+\sswap\s.+)$'
         replace: '# \1'
-
+</pre>
+<h4>10.Configure UFW firewall </h4>
+Sets secure default firewall policy but allows common ports.
+<pre>
     - name: Set default UFW policy to deny incoming
       ansible.builtin.ufw:
         state: enabled
@@ -206,7 +253,10 @@ localhost ansible_connection=local
         - 80
         - 443
         - "30000:32767"
-
+</pre>
+<h4>11.Deploy test NGINX container </h4>
+Verifies Docker and container orchestration are working.
+<pre>
     - name: Deploy test NGINX container
       community.docker.docker_container:
         name: test-nginx
@@ -215,7 +265,10 @@ localhost ansible_connection=local
         restart_policy: always
         published_ports:
           - "8080:80"
-
+</pre>
+<h4> 12.Log completion </h4>
+Confirms all tasks completed successfully.
+<pre>
     - name: Log completion
       ansible.builtin.debug:
         msg: "Ubuntu DevOps setup completed successfully!"
@@ -244,7 +297,7 @@ localhost ansible_connection=local
 
 ---
 
-<h2>Explanation of Key Steps</h2>
+<h2>Explanation of Ansible Key Steps</h2>
 
 <table>
 <tr>
@@ -278,20 +331,53 @@ localhost ansible_connection=local
 </table>
 
 ---
+<h2>Dockerfile explanationn</h2>
+<h2>🧱 Dockerfile Summary</h2>
 
-<h2>Notes</h2>
-
-<ul>
-  <li>This playbook runs on <strong>WSL Ubuntu</strong> or headless Ubuntu servers.</li>
-  <li>Creates a <strong>single-node Kubernetes cluster</strong> with Kind for testing Helm deployments.</li>
-  <li>Jenkins container is configured to access host Docker for CI/CD builds.</li>
-  <li>For production, this setup can be extended to cloud environments (AWS/GCP/Azure).</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>Section</th>
+      <th>Purpose</th>
+      <th>Key Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Stage 1 – Build</strong></td>
+      <td>Compile dependencies into Python wheels</td>
+      <td>Uses <code>pip wheel</code> to prebuild dependencies for faster installs and isolated builds</td>
+    </tr>
+    <tr>
+      <td><strong>Stage 2 – Runtime</strong></td>
+      <td>Prepare lightweight app runtime image</td>
+      <td>Copies prebuilt wheels, installs without cache, and copies source code for smaller image size</td>
+    </tr>
+    <tr>
+      <td><strong>ENV / EXPOSE</strong></td>
+      <td>Define environment variables and container port</td>
+      <td>Sets <code>PORT=8000</code> and exposes port <code>8000</code> for application access</td>
+    </tr>
+    <tr>
+      <td><strong>HEALTHCHECK</strong></td>
+      <td>Validate container health periodically</td>
+      <td>Runs <code>curl http://localhost:8000/health</code> every 10s, marking unhealthy containers automatically</td>
+    </tr>
+    <tr>
+      <td><strong>CMD</strong></td>
+      <td>Run application with Gunicorn</td>
+      <td>Executes <code>gunicorn --bind 0.0.0.0:8000 app:app --workers 2</code> for a production-ready WSGI server</td>
+    </tr>
+    <tr>
+      <td><strong>Optimization</strong></td>
+      <td>Reduce image size and improve build speed</td>
+      <td>Uses <code>python:3.10-slim</code>, no cache, and multi-stage build to minimize the final image footprint (~150MB)</td>
+    </tr>
+  </tbody>
+</table>
 
 </body>
 </html>
-
-
 
 
 <h2>CI/CD Pipeline Explanation</h2>
@@ -351,6 +437,14 @@ localhost ansible_connection=local
     <li>Secure handling of secrets using Kubernetes and Jenkins</li>
     <li>Container security scanning integrated in CI</li>
     <li>Scalable deployment using Helm and Kubernetes</li>
+</ul>
+<h2>Notes</h2>
+
+<ul>
+  <li>This playbook runs on <strong>WSL Ubuntu</strong> or headless Ubuntu servers.</li>
+  <li>Creates a <strong>single-node Kubernetes cluster</strong> with Kind for testing Helm deployments.</li>
+  <li>Jenkins container is configured to access host Docker for CI/CD builds.</li>
+  <li>For production, this setup can be extended to cloud environments (AWS/GCP/Azure).</li>
 </ul>
 
 </body>
