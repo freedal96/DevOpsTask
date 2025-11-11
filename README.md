@@ -205,6 +205,20 @@ Starts Jenkins inside a Docker container with access to host Docker, enabling CI
           - /usr/bin/docker:/usr/bin/docker
           - jenkins_home:/var/jenkins_home
 </pre>
+Install helm inside Jenkins docker.
+<pre>
+    - name: Install Helm inside Jenkins container
+      ansible.builtin.shell: |
+        docker exec --user root jenkins bash -c "
+          apt-get update -y &&
+          apt-get install -y curl tar apt-transport-https ca-certificates gnupg lsb-release &&
+          curl -fsSL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o /tmp/helm.tar.gz &&
+          tar -zxvf /tmp/helm.tar.gz -C /tmp &&
+          mv /tmp/linux-amd64/helm /usr/local/bin/helm &&
+          chmod +x /usr/local/bin/helm &&
+          helm version
+        "
+</pre>
 <h4>8. Create non-root user and add SSH key </h4>
 Creates a non-root DevOps user with sudo and Docker privileges.
 <pre>
