@@ -101,7 +101,7 @@ localhost ansible_connection=local
     devops_user: devops
     kube_version: v1.27.4
     kube_bin_path: /usr/local/bin
-    ssh_pubkey_path: "/home/andi/.ssh/id_rsa.pub"
+    ssh_pubkey_path: "/home/xxxxx/.ssh/id_rsa.pub"
     kind_version: v0.26.0
     kind_node_image: kindest/node:v1.34.0
 </pre>
