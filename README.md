@@ -16,7 +16,7 @@
     <li>Ansible for environment setup -This playbook runs on <strong>WSL Ubuntu</strong> or headless Ubuntu servers.</li>
     <li>Docker for containerization</li>
     <li>Kubernetes & Helm for deployment - Creates a <strong>single-node Kubernetes cluster</strong> with Kind for testing Helm deployments</li>
-    <li>Jenkins container is configured to access host Docker for CI/CD builds/li>
+    <li>Jenkins container is configured to host CI/CD builds</li>
     <li>Kubernetes Secrets for secure credentials</li>
     <li>Trivy for security scanning</li>
 </ul>
