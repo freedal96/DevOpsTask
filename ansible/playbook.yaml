@@ -13,10 +13,9 @@
     kind_node_image: kindest/node:v1.34.0
 
   tasks:
-
     - name: Log start of playbook
       ansible.builtin.debug:
-        msg: "🚀 Starting Ubuntu DevOps setup..."
+        msg: "Starting Ubuntu DevOps setup..."
 
     - name: Update apt packages
       ansible.builtin.apt:
@@ -44,7 +43,7 @@
 
     - name: Log Docker installation
       ansible.builtin.debug:
-        msg: "🐳 Docker installed and running."
+        msg: "Docker installed and running."
 
     # -------------------------
     # Kubernetes binaries
@@ -80,9 +79,9 @@
       args:
         creates: /usr/local/bin/helm
 
-# -------------------------
-# Jenkins container with Docker socket mounted
-# -------------------------
+    # -------------------------
+    # Jenkins container with Docker socket mounted
+    # -------------------------
     - name: Run Jenkins container with Docker access
       community.docker.docker_container:
         name: jenkins
@@ -97,6 +96,11 @@
           - /var/run/docker.sock:/var/run/docker.sock
           - /usr/bin/docker:/usr/bin/docker
           - jenkins_home:/var/jenkins_home
+
+    - name: Install Helm inside Jenkins container
+      ansible.builtin.shell: |
+        docker exec jenkins bash -c "curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"
+
     # -------------------------
     # Non-root user setup
     # -------------------------
@@ -158,4 +162,4 @@
 
     - name: Log completion
       ansible.builtin.debug:
-        msg: "🎯 Ubuntu DevOps setup completed successfully!"
+        msg: "Ubuntu DevOps setup completed successfully!"
