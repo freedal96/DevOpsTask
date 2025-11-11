@@ -405,11 +405,82 @@ Confirms all tasks completed successfully.
 </ol>
 
 <h1>Part 4: Secrets Management — Secure Configuration</h1>
+<h4>Secrets Management Overview</h4>
+
+<p>This project ensures that all sensitive information is securely managed and never hardcoded in the source code or Docker images.</p>
+
+<h4>1. DockerHub Credentials</h4>
 <ul>
-    <li><strong>DockerHub credentials:</strong> Stored securely in Jenkins and injected during pipeline execution.</li>
-    <li><strong>Application secrets:</strong> Stored as Kubernetes Secrets (e.g., <code>webapp-secrets</code>) and injected into Pods as environment variables.</li>
-    <li>Pods reference secrets via Helm templates (<code>envFrom.secretRef</code>).</li>
+  <li>Stored securely in <strong>Jenkins Credentials Manager</strong> (type: <code>Username/Password</code>).</li>
+  <li>Injected dynamically during the pipeline execution using Jenkins' <code>withCredentials</code> block.</li>
+  <li>Used to authenticate and push Docker images to DockerHub within the CI/CD pipeline.</li>
 </ul>
+
+<pre><code class="language-groovy">
+withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+    sh '''
+        echo $DH_PASS | docker login -u $DH_USER --password-stdin
+        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+    '''
+}
+</code></pre>
+
+<h4>2. Application Secrets</h4>
+<ul>
+  <li>Managed as <strong>Kubernetes Secrets</strong> (for example: <code>webapp-secrets</code>).</li>
+  <li>These secrets store application-level credentials such as database URLs, API keys, or tokens.</li>
+  <li>Secrets are automatically injected into application Pods as environment variables through Helm templates.</li>
+</ul>
+
+<pre><code class="language-yaml">
+envFrom:
+  - secretRef:
+      name: {{ .Values.secrets.appSecretName | default "webapp-secrets" }}
+</code></pre>
+
+<h4>3️. Helm Integration</h4>
+<ul>
+  <li>Helm dynamically references secrets defined in <code>values.yaml</code> or provided as Jenkins parameters.</li>
+  <li>This allows per-environment secret customization without exposing sensitive data in source control.</li>
+  <li>Ensures a <strong>secure, parameterized, and environment-specific</strong> deployment workflow.</li>
+</ul>
+
+<pre><code class="language-yaml">
+# values.yaml
+secrets:
+  appSecretName: webapp-secrets
+  dockerRegistry: my-dockerhub-secret
+</code></pre>
+
+<h3>✅ Summary</h3>
+
+<p>
+All <strong>DockerHub</strong> and <strong>application secrets</strong> are stored securely using native mechanisms — 
+<strong>Jenkins Credentials</strong> and <strong>Kubernetes Secrets</strong> — and injected safely at runtime via 
+<strong>Helm templates</strong>. This approach ensures secrets are never exposed in source code or Docker images.
+</p>
+
+<p>
+For <strong>production-ready deployments</strong>, it is recommended to externalize secret management to enterprise-grade 
+secret stores, such as:
+</p>
+
+<ul>
+  <li><strong>HashiCorp Vault</strong> — for centralized, fine-grained secret management and dynamic secret generation.</li>
+  <li><strong>Azure Key Vault</strong> — when running on Microsoft Azure, to securely store API keys, certificates, and connection strings.</li>
+  <li><strong>AWS Secrets Manager</strong> or <strong>Google Secret Manager</strong> — for secure integration with respective cloud-native environments.</li>
+</ul>
+
+<p>
+By integrating these cloud-based vaults or HashiCorp Vault, the pipeline achieves:
+</p>
+
+<ul>
+  <li>End-to-end secret rotation and auditability.</li>
+  <li>Centralized policy management across multiple environments.</li>
+  <li>Compliance with production security standards (SOC2, ISO 27001, etc.).</li>
+</ul>
+
 
 <h2>Security Scanning</h2>
 <p>All images and source code are scanned using <a href="https://github.com/aquasecurity/trivy">Trivy</a> to detect:</p>
