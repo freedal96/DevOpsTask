@@ -1,0 +1,36 @@
+# Python cache & bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Build and distribution directories
+build/
+dist/
+*.egg-info/
+
+# IDE and editor files
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Version control
+.git
+.gitignore
+
+# Local environment and secrets
+*.db
+*.sqlite3
+.env
+.DS_Store
+
+# Temporary or compiled files
+*.log
+tmp/
+.cache/

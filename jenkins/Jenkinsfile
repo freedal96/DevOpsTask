@@ -1,0 +1,153 @@
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME = "webapp"
+        GITHUB_REPO = "https://github.com/freedal96/DevOpsTask.git"
+        DOCKER_IMAGE = "freedalelan/${APP_NAME}"
+        DOCKER_TAG = "${env.BUILD_ID}"
+        HELM_CHART_PATH = "helm/"
+        PATH = "$HOME/.local/bin:$PATH"
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    stages {
+        stage('Install Trivy') {
+            steps {
+                sh '''
+                    if ! command -v trivy >/dev/null 2>&1; then
+                        echo "Installing Trivy from official tar.gz"
+                        apt-get update -y
+                        apt-get install -y wget tar
+                        wget -q https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.67.2_Linux-64bit.tar.gz -O /tmp/trivy.tar.gz
+                        tar zxvf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+                        chmod +x /usr/local/bin/trivy
+                    fi
+                    trivy --version
+                '''
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    cd app
+                    echo "Building Docker image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+                '''
+            }
+        }
+
+        stage('Run Trivy Security Scans') {
+            parallel {
+                stage('Scan Filesystem') {
+                    steps {
+                        sh '''
+                            echo "Running Trivy FS scan..."
+                            trivy fs --exit-code 0 --no-progress ./app || true
+                        '''
+                    }
+                }
+                stage('Scan Docker Image') {
+                    steps {
+                        sh '''
+                            echo "Running Trivy Image scan..."
+                            trivy image --exit-code 0 --no-progress ${DOCKER_IMAGE}:${DOCKER_TAG} || true
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Container Health Check') {
+            steps {
+                sh '''
+                    echo "Testing Docker container health..."
+                    docker rm -f tempweb || true
+                    docker run -d --name tempweb -p 8000:8000 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    sleep 5
+                    curl -fsS http://localhost:8000/health || (echo "Health check failed" && exit 1)
+                    docker stop tempweb && docker rm tempweb
+                    echo "Health check passed"
+                '''
+            }
+        }
+
+        stage('Push Docker Image to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+                    sh '''
+                        echo $DH_PASS | docker login -u $DH_USER --password-stdin
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                        docker push ${DOCKER_IMAGE}:latest
+                        docker logout
+                    '''
+                }
+            }
+        }
+
+        stage('Helm Setup') {
+            steps {
+                sh '''
+                    mkdir -p $HOME/.local/bin
+                    if ! command -v helm >/dev/null 2>&1; then
+                        echo "Installing Helm..."
+                        curl -fsSL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o helm.tar.gz
+                        tar -zxvf helm.tar.gz
+                        mv linux-amd64/helm $HOME/.local/bin/helm
+                        chmod +x $HOME/.local/bin/helm
+                    fi
+                    helm version
+                '''
+            }
+        }
+
+        stage('Deploy to Kubernetes with Helm') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG_PATH
+                        cd ${HELM_CHART_PATH}
+                        echo "Deploying ${APP_NAME} using Helm..."
+                        helm upgrade --install ${APP_NAME} . \
+                            --set image.repository=${DOCKER_IMAGE} \
+                            --set image.tag=${DOCKER_TAG} \
+                            --wait --timeout 120s
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG_PATH
+                        echo "Checking deployment rollout status..."
+                        kubectl rollout status deployment/${APP_NAME} -n default --timeout=60s
+                        kubectl get pods -o wide
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "🧹 Cleaning up resources..."
+            sh 'docker system prune -af || true'
+        }
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed. Check logs above."
+        }
+    }
+}

@@ -1,0 +1,165 @@
+---
+- name: Setup Ubuntu for DevOps (Single Node)
+  hosts: webserver
+  become: yes
+  gather_facts: yes
+
+  vars:
+    devops_user: devops
+    kube_version: v1.27.4
+    kube_bin_path: /usr/local/bin
+    ssh_pubkey_path: "/home/andi/.ssh/id_rsa.pub"
+    kind_version: v0.26.0
+    kind_node_image: kindest/node:v1.34.0
+
+  tasks:
+    - name: Log start of playbook
+      ansible.builtin.debug:
+        msg: "Starting Ubuntu DevOps setup..."
+
+    - name: Update apt packages
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install required packages including Docker
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - software-properties-common
+          - ufw
+          - docker.io
+        state: present
+        update_cache: yes
+
+    - name: Enable Docker service
+      ansible.builtin.systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Log Docker installation
+      ansible.builtin.debug:
+        msg: "Docker installed and running."
+
+    # -------------------------
+    # Kubernetes binaries
+    # -------------------------
+    - name: Download Kubernetes binaries
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kube_version }}/bin/linux/amd64/{{ item }}"
+        dest: "{{ kube_bin_path }}/{{ item }}"
+        mode: '0755'
+      loop:
+        - kubeadm
+        - kubelet
+        - kubectl
+
+    - name: Download kind binary
+      ansible.builtin.get_url:
+        url: "https://kind.sigs.k8s.io/dl/{{ kind_version }}/kind-linux-amd64"
+        dest: "{{ kube_bin_path }}/kind"
+        mode: '0755'
+
+    - name: Create Kind cluster
+      ansible.builtin.shell: >
+        kind create cluster --name devops-cluster --image {{ kind_node_image }}
+      args:
+        creates: /root/.kube/config
+
+    # -------------------------
+    # Helm installation
+    # -------------------------
+    - name: Install Helm using official script
+      ansible.builtin.shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    # -------------------------
+    # Jenkins container with Docker socket mounted
+    # -------------------------
+    - name: Run Jenkins container with Docker access
+      community.docker.docker_container:
+        name: jenkins
+        image: jenkins/jenkins:lts
+        state: started
+        restart_policy: always
+        privileged: yes                 # allows Docker access inside container
+        published_ports:
+          - "8081:8080"
+          - "50000:50000"
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /usr/bin/docker:/usr/bin/docker
+          - jenkins_home:/var/jenkins_home
+
+    - name: Install Helm inside Jenkins container
+      ansible.builtin.shell: |
+        docker exec jenkins bash -c "curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"
+
+    # -------------------------
+    # Non-root user setup
+    # -------------------------
+    - name: Ensure devops user exists
+      ansible.builtin.user:
+        name: "{{ devops_user }}"
+        groups: sudo,docker
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Add SSH public key for devops
+      ansible.builtin.authorized_key:
+        user: "{{ devops_user }}"
+        key: "{{ lookup('file', ssh_pubkey_path) }}"
+
+    # -------------------------
+    # Disable swap
+    # -------------------------
+    - name: Disable swap immediately
+      ansible.builtin.command: swapoff -a
+
+    - name: Disable swap permanently
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^(.+\sswap\s.+)$'
+        replace: '# \1'
+
+    # -------------------------
+    # UFW firewall
+    # -------------------------
+    - name: Set default UFW policy to deny incoming
+      ansible.builtin.ufw:
+        state: enabled
+        direction: incoming
+        policy: deny
+
+    - name: Allow SSH, HTTP, HTTPS, NodePorts
+      ansible.builtin.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - 22
+        - 80
+        - 443
+        - "30000:32767"
+
+    # -------------------------
+    # Test NGINX container
+    # -------------------------
+    - name: Deploy test NGINX container
+      community.docker.docker_container:
+        name: test-nginx
+        image: nginx:latest
+        state: started
+        restart_policy: always
+        published_ports:
+          - "8080:80"
+
+    - name: Log completion
+      ansible.builtin.debug:
+        msg: "Ubuntu DevOps setup completed successfully!"
