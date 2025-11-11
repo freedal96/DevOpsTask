@@ -2,11 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<h3>DevOpsTask - README</h3>
+<h3>DevOps - README</h3>
 </head>
 <body>
 
-<h1>DevOpsTask - Web Application CI/CD Pipeline</h1>
+<ul>
+  <li>This playbook runs on <strong>WSL Ubuntu</strong> or headless Ubuntu servers.</li>
+  <li>Creates a <strong>single-node Kubernetes cluster</strong> with Kind for testing Helm deployments.</li>
+  <li>Jenkins container is configured to access host Docker for CI/CD builds.</li>
+  <li>For production, this setup can be extended to cloud environments (AWS/GCP/Azure).</li>
+</ul>
+
+<h1>Web Application CI/CD Pipeline</h1>
 
 <p>This repository contains a fully automated DevOps pipeline to deploy a lightweight web application.This is implemented on a single-node Kubernetes cluster on WSL (Windows Subsystem for Linux). For production environments, this setup can be extended to AWS, GCP, or Azure managed Kubernetes clusters:
 :</p>
@@ -439,13 +446,6 @@ Confirms all tasks completed successfully.
     <li>Scalable deployment using Helm and Kubernetes</li>
 </ul>
 <h2>Notes</h2>
-
-<ul>
-  <li>This playbook runs on <strong>WSL Ubuntu</strong> or headless Ubuntu servers.</li>
-  <li>Creates a <strong>single-node Kubernetes cluster</strong> with Kind for testing Helm deployments.</li>
-  <li>Jenkins container is configured to access host Docker for CI/CD builds.</li>
-  <li>For production, this setup can be extended to cloud environments (AWS/GCP/Azure).</li>
-</ul>
 
 </body>
 </html>
