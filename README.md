@@ -6,13 +6,6 @@
 </head>
 <body>
 
-<ul>
-  <li>This playbook runs on <strong>WSL Ubuntu</strong> or headless Ubuntu servers.</li>
-  <li>Creates a <strong>single-node Kubernetes cluster</strong> with Kind for testing Helm deployments.</li>
-  <li>Jenkins container is configured to access host Docker for CI/CD builds.</li>
-  <li>For production, this setup can be extended to cloud environments (AWS/GCP/Azure).</li>
-</ul>
-
 <h1>Web Application CI/CD Pipeline</h1>
 
 <p>This repository contains a fully automated DevOps pipeline to deploy a lightweight web application.This is implemented on a single-node Kubernetes cluster on WSL (Windows Subsystem for Linux). For production environments, this setup can be extended to AWS, GCP, or Azure managed Kubernetes clusters:
@@ -20,10 +13,10 @@
 
 <ul>
     <li>Ubuntu Linux (headless)</li>
-    <li>Ansible for environment setup</li>
+    <li>Ansible for environment setup -This playbook runs on <strong>WSL Ubuntu</strong> or headless Ubuntu servers.</li>
     <li>Docker for containerization</li>
-    <li>Kubernetes & Helm for deployment</li>
-    <li>Jenkinsfile for CI/CD</li>
+    <li>Kubernetes & Helm for deployment - Creates a <strong>single-node Kubernetes cluster</strong> with Kind for testing Helm deployments</li>
+    <li>Jenkins container is configured to access host Docker for CI/CD builds/li>
     <li>Kubernetes Secrets for secure credentials</li>
     <li>Trivy for security scanning</li>
 </ul>
@@ -338,8 +331,8 @@ Confirms all tasks completed successfully.
 </table>
 
 ---
-<h2>Dockerfile explanationn</h2>
-<h2>🧱 Dockerfile Summary</h2>
+<h1>Part 2: Docker — Containerization</h1>
+<h2>Dockerfile Summary</h2>
 
 <table>
   <thead>
@@ -387,7 +380,7 @@ Confirms all tasks completed successfully.
 </html>
 
 
-<h2>CI/CD Pipeline Explanation</h2>
+<h1>Part 3: Jenkins — CI/CD Pipeline , Helm — Deployment</h1>
 <p>The Jenkins pipeline automates the following steps:</p>
 <ol>
     <li><strong>Install Trivy:</strong> Ensures vulnerability scanning is available on the Jenkins agent.</li>
@@ -411,7 +404,7 @@ Confirms all tasks completed successfully.
     <li><strong>Verify Deployment:</strong> Checks rollout status and pod health using <code>kubectl</code>.</li>
 </ol>
 
-<h2>Secrets Management</h2>
+<h1>Part 4: Secrets Management — Secure Configuration</h1>
 <ul>
     <li><strong>DockerHub credentials:</strong> Stored securely in Jenkins and injected during pipeline execution.</li>
     <li><strong>Application secrets:</strong> Stored as Kubernetes Secrets (e.g., <code>webapp-secrets</code>) and injected into Pods as environment variables.</li>
@@ -436,16 +429,6 @@ Confirms all tasks completed successfully.
     <li>Image is pushed to DockerHub</li>
     <li>Helm deployment succeeds and rollout completes</li>
 </ul>
-
-<h2>Notes for Interview</h2>
-<p>This submission demonstrates:</p>
-<ul>
-    <li>End-to-end automated CI/CD pipeline</li>
-    <li>Secure handling of secrets using Kubernetes and Jenkins</li>
-    <li>Container security scanning integrated in CI</li>
-    <li>Scalable deployment using Helm and Kubernetes</li>
-</ul>
-<h2>Notes</h2>
 
 </body>
 </html>
