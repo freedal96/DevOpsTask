@@ -44,8 +44,6 @@
 <h3>1. Provision Infrastructure (Ansible)</h3>
 <p>Run the playbook on your Ubuntu host to install Docker, Kubernetes tools, Helm, and Jenkins:</p>
 <pre>
-git clone https://github.com/freedal96/DevOpsTask.git
-cd ansible
 ansible-playbook -i inventory.ini playbook.yaml --ask-become-pass
 </pre>
 <p>This Ansible playbook prepares a single-node Ubuntu environment for container orchestration and CI/CD. It was tested on WSL Ubuntu with localhost inventory, but it can be adapted to a remote host by updating the inventory.</p>
@@ -419,7 +417,7 @@ Confirms all tasks completed successfully.
 </ol>
 
 <h1>Part 4: Secrets Management — Secure Configuration</h1>
-<h4>Secrets Management Overview</h4>
+<h3>I. Secrets Management Overview</h3>
 
 <p>This project ensures that all sensitive information is securely managed and never hardcoded in the source code or Docker images.</p>
 
@@ -466,7 +464,7 @@ secrets:
   dockerRegistry: my-dockerhub-secret
 </code></pre>
 
-<h3>✅ Summary</h3>
+<h3>II. Summary</h3>
 
 <p>
 All <strong>DockerHub</strong> and <strong>application secrets</strong> are stored securely using native mechanisms — 
@@ -496,17 +494,17 @@ By integrating these cloud-based vaults or HashiCorp Vault, the pipeline achieve
 </ul>
 
 
-<h2>Security Scanning</h2>
+<h3>III .Security Scanning</h3>
 <p>All images and source code are scanned using <a href="https://github.com/aquasecurity/trivy">Trivy</a> to detect:</p>
 <ul>
     <li>Vulnerabilities in application dependencies</li>
     <li>Misconfigurations in Docker images</li>
 </ul>
 
-<h2>Post-Build Cleanup</h2>
+<h3>IV. Post-Build Cleanup</h3>
 <p>The pipeline automatically prunes unused Docker images and containers to maintain the build environment clean.</p>
 
-<h2>Pipeline Success Criteria</h2>
+<h3>V. Pipeline Success Criteria</h3>
 <ul>
     <li>Docker image builds successfully</li>
     <li>Trivy scan passes (or reports warnings)</li>
@@ -514,6 +512,12 @@ By integrating these cloud-based vaults or HashiCorp Vault, the pipeline achieve
     <li>Image is pushed to DockerHub</li>
     <li>Helm deployment succeeds and rollout completes</li>
 </ul>
+
+<h3>VI. Rollback Strategy (For Production)</h3>
+<p>In production, rollbacks allow quick recovery from failed deployments. Jenkins pipelines can include a dedicated rollback stage that triggers automatically on failure or manually when needed.
+
+For Kubernetes environments, use<strong> Helm rollback</strong> (helm rollback <release> <revision>).
+This ensures fast recovery, minimal downtime, and version traceability through Jenkins and Helm release history..</p>
 
 </body>
 </html>
