@@ -31,13 +31,7 @@
 └── README.md
 </pre>
 
-<h2>Usage Instructions</h2>
-
-<h3>1. Provision Infrastructure (Ansible)</h3>
-<p>Run the playbook on your Ubuntu host to install Docker, Kubernetes tools, Helm, and Jenkins:</p>
-<pre>
-ansible-playbook -i inventory.ini playbook.yaml --ask-become-pass
-</pre>
+<h1>Usage Instructions</h1>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -47,7 +41,13 @@ ansible-playbook -i inventory.ini playbook.yaml --ask-become-pass
 <body>
 
 <h1>Part 1: Linux & Ansible Setup</h1>
-
+<h3>1. Provision Infrastructure (Ansible)</h3>
+<p>Run the playbook on your Ubuntu host to install Docker, Kubernetes tools, Helm, and Jenkins:</p>
+<pre>
+git clone https://github.com/freedal96/DevOpsTask.git
+cd ansible
+ansible-playbook -i inventory.ini playbook.yaml --ask-become-pass
+</pre>
 <p>This Ansible playbook prepares a single-node Ubuntu environment for container orchestration and CI/CD. It was tested on WSL Ubuntu with localhost inventory, but it can be adapted to a remote host by updating the inventory.</p>
 
 ---
