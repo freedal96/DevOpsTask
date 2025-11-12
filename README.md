@@ -52,7 +52,7 @@ ansible-playbook -i inventory.ini playbook.yaml --ask-become-pass
 
 ---
 
-<h2>Inventory File</h2>
+<h3>Inventory File</h3>
 
 <p>The inventory defines the host for Ansible. This configuration tells Ansible to run all tasks on the local machine using a local connection.Here we use <code>localhost</code> for WSL:</p>
 
@@ -63,7 +63,7 @@ localhost ansible_connection=local
 
 ---
 
-<h2>Playbook Overview</h2>
+<h3>Playbook Overview</h3>
 
 <p>The Ansible playbook installs and configures:</p>
 <ul>
